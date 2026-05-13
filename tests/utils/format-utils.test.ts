@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { formatMessageWithMentions, resolveUsername } from '../../src/utils/format-utils';
+import {
+  formatMessageWithMentions,
+  resolveMessageText,
+  resolveUsername,
+} from '../../src/utils/format-utils';
 import { Message } from '../../src/utils/slack-api-client';
 
 describe('formatMessageWithMentions', () => {
@@ -58,6 +62,108 @@ describe('formatMessageWithMentions', () => {
     const result = formatMessageWithMentions(message, users);
 
     expect(result).toBe('Hello <@>, <@ >, <@invalid');
+  });
+});
+
+describe('resolveMessageText', () => {
+  const users = new Map([['U123456', 'john.doe']]);
+
+  it('should return formatted text when message.text is present', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: 'Hello <@U123456>',
+    };
+    expect(resolveMessageText(message, users)).toBe('Hello @john.doe');
+  });
+
+  it('should extract text from blocks when message.text is empty', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: '',
+      blocks: [
+        {
+          type: 'rich_text',
+          elements: [
+            {
+              type: 'rich_text_section',
+              elements: [{ type: 'text', text: 'Content from blocks' }],
+            },
+          ],
+        },
+      ],
+    };
+    expect(resolveMessageText(message, users)).toBe('Content from blocks');
+  });
+
+  it('should extract text from blocks when message.text is undefined', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      blocks: [
+        {
+          type: 'rich_text',
+          elements: [
+            {
+              type: 'rich_text_section',
+              elements: [{ type: 'text', text: 'Block content' }],
+            },
+          ],
+        },
+      ],
+    };
+    expect(resolveMessageText(message, users)).toBe('Block content');
+  });
+
+  it('should apply mention formatting to block-extracted text', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      blocks: [
+        {
+          type: 'rich_text',
+          elements: [
+            {
+              type: 'rich_text_section',
+              elements: [
+                { type: 'text', text: 'Hello ' },
+                { type: 'user', user_id: 'U123456' },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(resolveMessageText(message, users)).toBe('Hello @john.doe');
+  });
+
+  it('should return null when both text and blocks are empty', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+    };
+    expect(resolveMessageText(message, users)).toBeNull();
+  });
+
+  it('should prefer text over blocks when both are present', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: 'Text content',
+      blocks: [
+        {
+          type: 'rich_text',
+          elements: [
+            {
+              type: 'rich_text_section',
+              elements: [{ type: 'text', text: 'Block content' }],
+            },
+          ],
+        },
+      ],
+    };
+    expect(resolveMessageText(message, users)).toBe('Text content');
   });
 });
 

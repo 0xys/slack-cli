@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { Message as SlackMessage } from '../../types/slack';
 import { formatTimestampFixed } from '../date-utils';
-import { formatMessageWithMentions, resolveUsername } from '../format-utils';
+import { resolveMessageText, resolveUsername } from '../format-utils';
 import { sanitizeTerminalText } from '../terminal-sanitizer';
 import { AbstractFormatter, createFormatterFactory, JsonFormatter } from './base-formatter';
 
@@ -29,7 +29,7 @@ class TableHistoryFormatter extends AbstractFormatter<HistoryFormatterOptions> {
       const username = resolveUsername(message, users);
 
       console.log(`${chalk.gray(`[${timestamp}]`)} ${chalk.cyan(username)}`);
-      const text = message.text ? formatMessageWithMentions(message.text, users) : '(no text)';
+      const text = resolveMessageText(message, users) ?? '(no text)';
       console.log(text);
       if (permalinks?.has(message.ts)) {
         console.log(chalk.blue(sanitizeTerminalText(permalinks.get(message.ts)!)));
@@ -53,7 +53,7 @@ class SimpleHistoryFormatter extends AbstractFormatter<HistoryFormatterOptions> 
     messages.forEach((message) => {
       const timestamp = formatTimestampFixed(message.ts);
       const username = resolveUsername(message, users);
-      const text = message.text ? formatMessageWithMentions(message.text, users) : '(no text)';
+      const text = resolveMessageText(message, users) ?? '(no text)';
       const link = permalinks?.get(message.ts);
       const linkSuffix = link ? ` ${sanitizeTerminalText(link)}` : '';
       console.log(`[${timestamp}] ${username}: ${text}${linkSuffix}`);
@@ -71,7 +71,7 @@ class JsonHistoryFormatter extends JsonFormatter<HistoryFormatterOptions> {
         ts: message.ts,
         timestamp: formatTimestampFixed(message.ts),
         user: resolveUsername(message, users),
-        text: message.text || '(no text)',
+        text: resolveMessageText(message, users) ?? '(no text)',
         ...(message.thread_ts !== undefined && { thread_ts: message.thread_ts }),
         ...(message.reply_count !== undefined && { reply_count: message.reply_count }),
         ...(permalinks?.has(message.ts) && { permalink: permalinks.get(message.ts) }),

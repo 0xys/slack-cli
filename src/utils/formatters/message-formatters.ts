@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { Channel, Message } from '../../types/slack';
 import { formatChannelName } from '../channel-formatter';
 import { formatSlackTimestamp } from '../date-utils';
-import { formatMessageWithMentions } from '../format-utils';
+import { resolveMessageText } from '../format-utils';
 import { sanitizeTerminalText } from '../terminal-sanitizer';
 import { AbstractFormatter, createFormatterFactory, JsonFormatter } from './base-formatter';
 
@@ -33,7 +33,7 @@ class TableMessageFormatter extends AbstractFormatter<MessageFormatterOptions> {
           message.user ? users.get(message.user) || message.user : 'unknown'
         );
         console.log(`${chalk.gray(timestamp)} ${chalk.cyan(author)}`);
-        const text = message.text ? formatMessageWithMentions(message.text, users) : '(no text)';
+        const text = resolveMessageText(message, users) ?? '(no text)';
         console.log(text);
         console.log('');
       });
@@ -68,7 +68,7 @@ class SimpleMessageFormatter extends AbstractFormatter<MessageFormatterOptions> 
         const author = sanitizeTerminalText(
           message.user ? users.get(message.user) || message.user : 'unknown'
         );
-        const text = message.text ? formatMessageWithMentions(message.text, users) : '(no text)';
+        const text = resolveMessageText(message, users) ?? '(no text)';
         console.log(`[${timestamp}] ${author}: ${text}`);
       });
 
@@ -115,7 +115,7 @@ class JsonMessageFormatter extends JsonFormatter<MessageFormatterOptions, Messag
       output.messages = messages.map((message) => ({
         timestamp: formatSlackTimestamp(message.ts),
         author: message.user ? users.get(message.user) || message.user : 'unknown',
-        text: message.text || '(no text)',
+        text: resolveMessageText(message, users) ?? '(no text)',
       }));
     }
 

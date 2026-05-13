@@ -1,4 +1,5 @@
 import { Message } from '../types/slack';
+import { extractTextFromBlocks } from './block-text-extractor';
 import { USER_MENTION_PATTERN } from './slack-patterns';
 import { sanitizeTerminalText } from './terminal-sanitizer';
 
@@ -10,6 +11,17 @@ export function formatMessageWithMentions(message: string, users: Map<string, st
     const username = sanitizeTerminalText(users.get(userId) || userId);
     return `@${username}`;
   });
+}
+
+export function resolveMessageText(message: Message, users: Map<string, string>): string | null {
+  if (message.text) {
+    return formatMessageWithMentions(message.text, users);
+  }
+  const blockText = extractTextFromBlocks(message.blocks);
+  if (blockText) {
+    return formatMessageWithMentions(blockText, users);
+  }
+  return null;
 }
 
 export function resolveUsername(message: Message, users: Map<string, string>): string {
