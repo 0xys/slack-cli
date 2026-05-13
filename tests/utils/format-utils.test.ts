@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatMessageWithMentions,
+  resolveAttachmentsText,
   resolveMessageText,
   resolveUsername,
 } from '../../src/utils/format-utils';
@@ -138,12 +139,129 @@ describe('resolveMessageText', () => {
     expect(resolveMessageText(message, users)).toBe('Hello @john.doe');
   });
 
+  it('should extract text from attachment blocks when text and blocks are empty', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: '',
+      attachments: [
+        {
+          id: 1,
+          blocks: [
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: 'Deployment *service-abc123* is starting\n',
+              },
+            },
+          ],
+          fallback: '[no preview available]',
+        },
+      ],
+    };
+    expect(resolveMessageText(message, users)).toBe('Deployment *service-abc123* is starting\n');
+  });
+
+  it('should extract fallback text from attachments when no blocks', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: '',
+      attachments: [
+        {
+          fallback: 'Fallback text here',
+        },
+      ],
+    };
+    expect(resolveMessageText(message, users)).toBe('Fallback text here');
+  });
+
+  it('should extract text field from attachments', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: '',
+      attachments: [
+        {
+          text: 'Attachment text content',
+        },
+      ],
+    };
+    expect(resolveMessageText(message, users)).toBe('Attachment text content');
+  });
+
+  it('should prefer attachment blocks over fallback text', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: '',
+      attachments: [
+        {
+          blocks: [
+            {
+              type: 'section',
+              text: { type: 'mrkdwn', text: 'Block text' },
+            },
+          ],
+          fallback: 'Fallback text',
+          text: 'Attachment text',
+        },
+      ],
+    };
+    expect(resolveMessageText(message, users)).toBe('Block text');
+  });
+
+  it('should concatenate text from multiple attachments', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: '',
+      attachments: [
+        { text: 'First attachment' },
+        { text: 'Second attachment' },
+      ],
+    };
+    expect(resolveMessageText(message, users)).toBe('First attachment\nSecond attachment');
+  });
+
+  it('should use blocks as main text when both blocks and attachments are present', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: '',
+      blocks: [
+        {
+          type: 'rich_text',
+          elements: [
+            {
+              type: 'rich_text_section',
+              elements: [{ type: 'text', text: 'From blocks' }],
+            },
+          ],
+        },
+      ],
+      attachments: [{ text: 'From attachments' }],
+    };
+    expect(resolveMessageText(message, users)).toBe('From blocks');
+  });
+
   it('should return null when both text and blocks are empty', () => {
     const message: Message = {
       type: 'message',
       ts: '1609459200.000100',
     };
     expect(resolveMessageText(message, users)).toBeNull();
+  });
+
+  it('should not include attachments in text when text is present', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: 'Main text',
+      attachments: [{ text: 'Attachment detail' }],
+    };
+    expect(resolveMessageText(message, users)).toBe('Main text');
   });
 
   it('should prefer text over blocks when both are present', () => {
@@ -164,6 +282,61 @@ describe('resolveMessageText', () => {
       ],
     };
     expect(resolveMessageText(message, users)).toBe('Text content');
+  });
+});
+
+describe('resolveAttachmentsText', () => {
+  const users = new Map([['U123456', 'john.doe']]);
+
+  it('should return attachment text when message has text and attachments', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: 'Main text',
+      attachments: [
+        {
+          blocks: [
+            {
+              type: 'section',
+              fields: [
+                { type: 'mrkdwn', text: '*Key:*\nvalue1' },
+                { type: 'mrkdwn', text: '*Key2:*\nvalue2' },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(resolveAttachmentsText(message, users)).toBe('*Key:*\nvalue1\n*Key2:*\nvalue2');
+  });
+
+  it('should return null when attachments are empty', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: 'Main text',
+    };
+    expect(resolveAttachmentsText(message, users)).toBeNull();
+  });
+
+  it('should return null when main text is empty (attachments used as main text)', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: '',
+      attachments: [{ text: 'Fallback content' }],
+    };
+    expect(resolveAttachmentsText(message, users)).toBeNull();
+  });
+
+  it('should resolve mentions in attachment text', () => {
+    const message: Message = {
+      type: 'message',
+      ts: '1609459200.000100',
+      text: 'Title',
+      attachments: [{ text: 'Reviewed by <@U123456>' }],
+    };
+    expect(resolveAttachmentsText(message, users)).toBe('Reviewed by @john.doe');
   });
 });
 

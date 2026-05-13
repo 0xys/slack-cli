@@ -89,6 +89,18 @@ export class MessageOperations extends BaseSlackClient {
     return await this.historyOps.getThreadHistory(channel, threadTs);
   }
 
+  async getMessage(channel: string, messageTs: string): Promise<HistoryResult> {
+    return await this.historyOps.getMessage(channel, messageTs);
+  }
+
+  async getThreadMessage(
+    channel: string,
+    threadTs: string,
+    messageTs: string
+  ): Promise<HistoryResult> {
+    return await this.historyOps.getThreadMessage(channel, threadTs, messageTs);
+  }
+
   async getChannelUnread(channelNameOrId: string): Promise<ChannelUnreadResult> {
     return await this.historyOps.getChannelUnread(channelNameOrId);
   }

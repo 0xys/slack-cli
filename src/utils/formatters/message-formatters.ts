@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { Channel, Message } from '../../types/slack';
 import { formatChannelName } from '../channel-formatter';
 import { formatSlackTimestamp } from '../date-utils';
-import { resolveMessageText } from '../format-utils';
+import { resolveAttachmentsText, resolveMessageText } from '../format-utils';
 import { sanitizeTerminalText } from '../terminal-sanitizer';
 import { AbstractFormatter, createFormatterFactory, JsonFormatter } from './base-formatter';
 
@@ -35,6 +35,10 @@ class TableMessageFormatter extends AbstractFormatter<MessageFormatterOptions> {
         console.log(`${chalk.gray(timestamp)} ${chalk.cyan(author)}`);
         const text = resolveMessageText(message, users) ?? '(no text)';
         console.log(text);
+        const attachments = resolveAttachmentsText(message, users);
+        if (attachments) {
+          console.log(chalk.dim(attachments));
+        }
         console.log('');
       });
 
@@ -70,6 +74,10 @@ class SimpleMessageFormatter extends AbstractFormatter<MessageFormatterOptions> 
         );
         const text = resolveMessageText(message, users) ?? '(no text)';
         console.log(`[${timestamp}] ${author}: ${text}`);
+        const attachments = resolveAttachmentsText(message, users);
+        if (attachments) {
+          console.log(`  ${attachments.replace(/\n/g, '\n  ')}`);
+        }
       });
 
       if (
@@ -95,6 +103,7 @@ interface MessageJsonOutput {
     timestamp: string;
     author: string;
     text: string;
+    attachments?: string;
   }[];
 }
 
@@ -112,11 +121,15 @@ class JsonMessageFormatter extends JsonFormatter<MessageFormatterOptions, Messag
     };
 
     if (!countOnly && messages.length > 0) {
-      output.messages = messages.map((message) => ({
-        timestamp: formatSlackTimestamp(message.ts),
-        author: message.user ? users.get(message.user) || message.user : 'unknown',
-        text: resolveMessageText(message, users) ?? '(no text)',
-      }));
+      output.messages = messages.map((message) => {
+        const att = resolveAttachmentsText(message, users);
+        return {
+          timestamp: formatSlackTimestamp(message.ts),
+          author: message.user ? users.get(message.user) || message.user : 'unknown',
+          text: resolveMessageText(message, users) ?? '(no text)',
+          ...(att && { attachments: att }),
+        };
+      });
     }
 
     if (

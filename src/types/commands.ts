@@ -53,6 +53,7 @@ export interface HistoryOptions {
   number?: string;
   since?: string;
   thread?: string;
+  ts?: string;
   withLink?: boolean;
   format?: 'table' | 'simple' | 'json';
   profile?: string;

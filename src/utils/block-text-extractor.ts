@@ -15,10 +15,16 @@ interface RichTextElement {
   style?: string;
 }
 
+interface TextObject {
+  type: string;
+  text: string;
+}
+
 interface Block {
   type: string;
   elements?: RichTextElement[];
-  text?: { type: string; text: string };
+  text?: TextObject;
+  fields?: TextObject[];
 }
 
 function extractInlineText(element: BlockElement): string {
@@ -85,8 +91,16 @@ function extractBlockText(block: Block): string {
     case 'rich_text':
       return extractRichTextBlock(block);
     case 'section':
-    case 'header':
-      return block.text?.text || '';
+    case 'header': {
+      const parts: string[] = [];
+      if (block.text?.text) parts.push(block.text.text);
+      if (block.fields) {
+        for (const field of block.fields) {
+          if (field.text) parts.push(field.text);
+        }
+      }
+      return parts.join('\n');
+    }
     default:
       return '';
   }
@@ -95,4 +109,23 @@ function extractBlockText(block: Block): string {
 export function extractTextFromBlocks(blocks: unknown[] | undefined): string {
   if (!blocks || blocks.length === 0) return '';
   return (blocks as Block[]).map(extractBlockText).filter(Boolean).join('\n');
+}
+
+interface Attachment {
+  blocks?: unknown[];
+  text?: string;
+  fallback?: string;
+}
+
+function extractAttachmentText(attachment: Attachment): string {
+  const blockText = extractTextFromBlocks(attachment.blocks);
+  if (blockText) return blockText;
+  if (attachment.text) return attachment.text;
+  if (attachment.fallback) return attachment.fallback;
+  return '';
+}
+
+export function extractTextFromAttachments(attachments: unknown[] | undefined): string {
+  if (!attachments || attachments.length === 0) return '';
+  return (attachments as Attachment[]).map(extractAttachmentText).filter(Boolean).join('\n');
 }

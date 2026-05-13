@@ -16,31 +16,37 @@ export function setupHistoryCommand(): Command {
     .option('-n, --number <number>', 'Number of messages to retrieve')
     .option('--since <date>', 'Get messages since specific date (YYYY-MM-DD HH:MM:SS)')
     .option('-t, --thread <thread>', 'Thread timestamp to retrieve complete thread conversation')
+    .option('--ts <timestamp>', 'Fetch a single message by its timestamp')
     .option('--with-link', 'Include permalink URL for each message', false)
     .option('--format <format>', 'Output format: table, simple, json', 'table')
     .option('--profile <profile>', 'Use specific workspace profile')
     .hook(
       'preAction',
       createValidationHook([
-        (options) => (options.thread ? null : optionValidators.messageCount(options)),
-        (options) => (options.thread ? null : optionValidators.sinceDate(options)),
+        (options) => (options.thread || options.ts ? null : optionValidators.messageCount(options)),
+        (options) => (options.thread || options.ts ? null : optionValidators.sinceDate(options)),
         optionValidators.threadTimestamp,
+        optionValidators.messageTimestamp,
         optionValidators.format,
       ])
     )
     .action(
       wrapCommand(async (options: HistoryOptions) => {
         await withSlackClient(options, async (client) => {
-          const limit = parseCount(
-            options.number,
-            API_LIMITS.DEFAULT_MESSAGE_COUNT,
-            API_LIMITS.MIN_MESSAGE_COUNT,
-            API_LIMITS.MAX_MESSAGE_COUNT
-          );
-
           let messages: Message[];
           let users: Map<string, string>;
-          if (options.thread) {
+
+          if (options.ts) {
+            if (options.thread) {
+              ({ messages, users } = await client.getThreadMessage(
+                options.channel,
+                options.thread,
+                options.ts
+              ));
+            } else {
+              ({ messages, users } = await client.getMessage(options.channel, options.ts));
+            }
+          } else if (options.thread) {
             if (options.number !== undefined) {
               console.log('Warning: --number is ignored when --thread is specified.');
             }
@@ -49,6 +55,13 @@ export function setupHistoryCommand(): Command {
             }
             ({ messages, users } = await client.getThreadHistory(options.channel, options.thread));
           } else {
+            const limit = parseCount(
+              options.number,
+              API_LIMITS.DEFAULT_MESSAGE_COUNT,
+              API_LIMITS.MIN_MESSAGE_COUNT,
+              API_LIMITS.MAX_MESSAGE_COUNT
+            );
+
             const historyOptions: ApiHistoryOptions = {
               limit,
             };
@@ -75,7 +88,7 @@ export function setupHistoryCommand(): Command {
 
           const format = parseFormat(options.format);
           displayHistoryResults(messages, users, options.channel, format, {
-            preserveOrder: Boolean(options.thread),
+            preserveOrder: Boolean(options.thread || options.ts),
             permalinks,
           });
         });

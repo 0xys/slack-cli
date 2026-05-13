@@ -310,6 +310,118 @@ describe('history command', () => {
     });
   });
 
+  describe('--ts option', () => {
+    it('should fetch a single message by timestamp', async () => {
+      vi.mocked(mockConfigManager.getConfig).mockResolvedValue({
+        token: 'test-token',
+        updatedAt: new Date().toISOString(),
+      });
+
+      vi.mocked(mockSlackClient.getMessage).mockResolvedValue({
+        messages: [
+          {
+            type: 'message',
+            text: 'Specific message',
+            user: 'U123456',
+            ts: '1609459200.000100',
+          },
+        ],
+        users: new Map([['U123456', 'john.doe']]),
+      });
+
+      await program.parseAsync([
+        'node',
+        'slack-cli',
+        'history',
+        '-c',
+        'general',
+        '--ts',
+        '1609459200.000100',
+      ]);
+
+      expect(mockSlackClient.getMessage).toHaveBeenCalledWith('general', '1609459200.000100');
+      expect(mockSlackClient.getHistory).not.toHaveBeenCalled();
+      expect(mockSlackClient.getThreadHistory).not.toHaveBeenCalled();
+    });
+
+    it('should fetch a thread message when both --ts and --thread are specified', async () => {
+      vi.mocked(mockConfigManager.getConfig).mockResolvedValue({
+        token: 'test-token',
+        updatedAt: new Date().toISOString(),
+      });
+
+      vi.mocked(mockSlackClient.getThreadMessage).mockResolvedValue({
+        messages: [
+          {
+            type: 'message',
+            text: 'Thread reply',
+            user: 'U789012',
+            ts: '1609459300.000200',
+            thread_ts: '1609459200.000100',
+          },
+        ],
+        users: new Map([['U789012', 'jane.smith']]),
+      });
+
+      await program.parseAsync([
+        'node',
+        'slack-cli',
+        'history',
+        '-c',
+        'general',
+        '--ts',
+        '1609459300.000200',
+        '-t',
+        '1609459200.000100',
+      ]);
+
+      expect(mockSlackClient.getThreadMessage).toHaveBeenCalledWith(
+        'general',
+        '1609459200.000100',
+        '1609459300.000200'
+      );
+      expect(mockSlackClient.getMessage).not.toHaveBeenCalled();
+      expect(mockSlackClient.getHistory).not.toHaveBeenCalled();
+    });
+
+    it('should ignore --number and --since when --ts is specified', async () => {
+      vi.mocked(mockConfigManager.getConfig).mockResolvedValue({
+        token: 'test-token',
+        updatedAt: new Date().toISOString(),
+      });
+
+      vi.mocked(mockSlackClient.getMessage).mockResolvedValue({
+        messages: [],
+        users: new Map(),
+      });
+
+      await program.parseAsync([
+        'node',
+        'slack-cli',
+        'history',
+        '-c',
+        'general',
+        '--ts',
+        '1609459200.000100',
+        '-n',
+        '20',
+        '--since',
+        '2024-01-01 00:00:00',
+      ]);
+
+      expect(mockSlackClient.getMessage).toHaveBeenCalledWith('general', '1609459200.000100');
+    });
+
+    it('should reject invalid --ts format', async () => {
+      const historyCommand = setupHistoryCommand();
+      historyCommand.exitOverride();
+
+      await expect(
+        historyCommand.parseAsync(['-c', 'general', '--ts', 'invalid'], { from: 'user' })
+      ).rejects.toThrow();
+    });
+  });
+
   describe('error handling', () => {
     it('should show error when no configuration exists', async () => {
       vi.mocked(mockConfigManager.getConfig).mockResolvedValue(null);

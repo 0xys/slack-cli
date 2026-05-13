@@ -244,6 +244,83 @@ describe('MessageOperations', () => {
     });
   });
 
+  describe('getMessage', () => {
+    it('should fetch a single message by timestamp', async () => {
+      vi.mocked(channelResolver.resolveChannelId).mockResolvedValue('C123456789');
+
+      mockClient.conversations.history.mockResolvedValue({
+        ok: true,
+        messages: [
+          {
+            type: 'message',
+            text: 'Target message',
+            user: 'U111',
+            ts: '1609459200.000100',
+          },
+        ],
+      });
+
+      mockClient.users.info.mockResolvedValue({
+        ok: true,
+        user: { name: 'alice' },
+      });
+
+      const result = await messageOps.getMessage('general', '1609459200.000100');
+
+      expect(mockClient.conversations.history).toHaveBeenCalledWith({
+        channel: 'C123456789',
+        latest: '1609459200.000100',
+        inclusive: true,
+        limit: 1,
+      });
+      expect(result.messages).toHaveLength(1);
+      expect(result.messages[0].text).toBe('Target message');
+      expect(result.users.get('U111')).toBe('alice');
+    });
+  });
+
+  describe('getThreadMessage', () => {
+    it('should fetch a single message within a thread', async () => {
+      vi.mocked(channelResolver.resolveChannelId).mockResolvedValue('C123456789');
+
+      mockClient.conversations.replies.mockResolvedValue({
+        ok: true,
+        messages: [
+          {
+            type: 'message',
+            text: 'Thread reply',
+            user: 'U222',
+            ts: '1609459300.000200',
+            thread_ts: '1609459200.000100',
+          },
+        ],
+      });
+
+      mockClient.users.info.mockResolvedValue({
+        ok: true,
+        user: { name: 'bob' },
+      });
+
+      const result = await messageOps.getThreadMessage(
+        'general',
+        '1609459200.000100',
+        '1609459300.000200'
+      );
+
+      expect(mockClient.conversations.replies).toHaveBeenCalledWith({
+        channel: 'C123456789',
+        ts: '1609459200.000100',
+        latest: '1609459300.000200',
+        oldest: '1609459300.000200',
+        inclusive: true,
+        limit: 1,
+      });
+      expect(result.messages).toHaveLength(1);
+      expect(result.messages[0].text).toBe('Thread reply');
+      expect(result.users.get('U222')).toBe('bob');
+    });
+  });
+
   describe('getChannelUnread', () => {
     it('should retry history fetches when Slack rate limits a page request', async () => {
       const delaySpy = vi

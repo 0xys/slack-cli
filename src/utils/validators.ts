@@ -100,6 +100,11 @@ export const formatValidators = {
     return validateFormat(value, pattern, ERROR_MESSAGES.INVALID_THREAD_TIMESTAMP);
   },
 
+  messageTimestamp: (value: string): string | null => {
+    const pattern = /^\d{10}\.\d{6}$/;
+    return validateFormat(value, pattern, ERROR_MESSAGES.INVALID_MESSAGE_TIMESTAMP);
+  },
+
   /**
    * Validates Slack channel ID format (C1234567890, D1234567890, G1234567890)
    */
@@ -212,6 +217,13 @@ export const optionValidators = {
   threadTimestamp: (options: Record<string, unknown>): string | null => {
     if (options.thread) {
       return formatValidators.threadTimestamp(options.thread as string);
+    }
+    return null;
+  },
+
+  messageTimestamp: (options: Record<string, unknown>): string | null => {
+    if (options.ts) {
+      return formatValidators.messageTimestamp(options.ts as string);
     }
     return null;
   },

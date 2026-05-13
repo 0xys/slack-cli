@@ -129,6 +129,18 @@ export class SlackApiClient {
     return this.messageOps.getThreadHistory(channel, threadTs);
   }
 
+  async getMessage(channel: string, messageTs: string): Promise<HistoryResult> {
+    return this.messageOps.getMessage(channel, messageTs);
+  }
+
+  async getThreadMessage(
+    channel: string,
+    threadTs: string,
+    messageTs: string
+  ): Promise<HistoryResult> {
+    return this.messageOps.getThreadMessage(channel, threadTs, messageTs);
+  }
+
   async listUnreadChannels(): Promise<Channel[]> {
     try {
       const channels = await this.searchOps.listUnreadChannels();

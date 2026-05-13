@@ -368,4 +368,55 @@ describe('extractTextFromBlocks', () => {
     ];
     expect(extractTextFromBlocks(blocks)).toBe('Title\nDescription\nDetails');
   });
+
+  it('should extract text from section block with fields', () => {
+    const blocks = [
+      {
+        type: 'section',
+        fields: [
+          { type: 'mrkdwn', text: '*Name:*\nalice' },
+          { type: 'mrkdwn', text: '*Role:*\nengineer' },
+        ],
+      },
+    ];
+    expect(extractTextFromBlocks(blocks)).toBe('*Name:*\nalice\n*Role:*\nengineer');
+  });
+
+  it('should combine section text and fields', () => {
+    const blocks = [
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: 'Summary' },
+        fields: [
+          { type: 'mrkdwn', text: '*Key1:*\nvalue1' },
+          { type: 'mrkdwn', text: '*Key2:*\nvalue2' },
+        ],
+      },
+    ];
+    expect(extractTextFromBlocks(blocks)).toBe(
+      'Summary\n*Key1:*\nvalue1\n*Key2:*\nvalue2'
+    );
+  });
+
+  it('should handle multiple section blocks with fields', () => {
+    const blocks = [
+      {
+        type: 'section',
+        fields: [
+          { type: 'mrkdwn', text: '*Project:*\nfoo' },
+          { type: 'mrkdwn', text: '*Owner:*\nbob' },
+        ],
+      },
+      {
+        type: 'section',
+        fields: [
+          { type: 'mrkdwn', text: '*Status:*\nrunning' },
+          { type: 'mrkdwn', text: '*Duration:*\n5m' },
+        ],
+      },
+    ];
+    expect(extractTextFromBlocks(blocks)).toBe(
+      '*Project:*\nfoo\n*Owner:*\nbob\n*Status:*\nrunning\n*Duration:*\n5m'
+    );
+  });
 });

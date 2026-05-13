@@ -14,6 +14,7 @@ export const ERROR_MESSAGES = {
   NO_MESSAGE_OR_FILE: 'You must specify either --message or --file',
   BOTH_MESSAGE_AND_FILE: 'Cannot use both --message and --file',
   INVALID_THREAD_TIMESTAMP: 'Invalid thread timestamp format',
+  INVALID_MESSAGE_TIMESTAMP: 'Invalid message timestamp format',
   INVALID_SCHEDULE_AT:
     'Invalid schedule time format. Use Unix timestamp (seconds) or ISO 8601 date-time',
   INVALID_SCHEDULE_AFTER: '--after must be a positive integer (minutes)',
